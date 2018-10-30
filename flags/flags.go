@@ -63,7 +63,8 @@ func (flags *Flags) Parse() {
 	// If no config file is explicitly passed in as a param,
 	// set the flag to the default config file
 	if !flags.HasConfig() {
-		homeDir, err := wtf.Home()
+		fs := wtf.FileSystem{}
+		homeDir, err := fs.Home()
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)

@@ -3,9 +3,7 @@ package wtftests
 import (
 	"testing"
 
-	"github.com/olebedev/config"
 	. "github.com/senorprogrammer/wtf/checklist"
-	"github.com/senorprogrammer/wtf/wtf"
 	. "github.com/stretchr/testify/assert"
 )
 
@@ -39,5 +37,5 @@ func TestToggle(t *testing.T) {
 /* -------------------- helpers -------------------- */
 
 func loadConfig() {
-	wtf.Config, _ = config.ParseYamlFile("../_sample_configs/simple_config.yml")
+	//wtf.AppConfig, _ = config.ParseYamlFile("../_sample_configs/simple_config.yml")
 }

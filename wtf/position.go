@@ -1,5 +1,12 @@
 package wtf
 
+type Positioner interface {
+	Top() int
+	Left() int
+	Width() int
+	Height() int
+}
+
 type Position struct {
 	top    int
 	left   int

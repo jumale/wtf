@@ -1,6 +1,7 @@
 package wtf
 
 import (
+	"github.com/pkg/errors"
 	"regexp"
 	"strconv"
 	"strings"
@@ -408,6 +409,28 @@ var colors = map[string]tcell.Color{
 	"whitesmoke":           tcell.ColorWhiteSmoke,
 	"yellow":               tcell.ColorYellow,
 	"yellowgreen":          tcell.ColorYellowGreen,
+}
+
+type Color tcell.Color
+
+func (c *Color) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var label string
+	err := unmarshal(&label)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	*c = Color(tcell.GetColor(label))
+	return nil
+}
+
+func TcellToTviewColor(c tcell.Color) string {
+	for label, color := range tcell.ColorNames {
+		if color == c {
+			return label
+		}
+	}
+	return "" // should not be a case, because all tcell colors expected to be mapped in the ColorNames
 }
 
 func ASCIItoTviewColors(text string) string {

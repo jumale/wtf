@@ -2,13 +2,12 @@ package help
 
 import (
 	"fmt"
-
-	"github.com/senorprogrammer/wtf/git"
-	"github.com/senorprogrammer/wtf/github"
-	"github.com/senorprogrammer/wtf/textfile"
-	"github.com/senorprogrammer/wtf/todo"
-	"github.com/senorprogrammer/wtf/todoist"
-	"github.com/senorprogrammer/wtf/weatherservices/weather"
+	//"github.com/senorprogrammer/wtf/git"
+	"github.com/senorprogrammer/wtf/widget/github"
+	//"github.com/senorprogrammer/wtf/textfile"
+	//"github.com/senorprogrammer/wtf/todo"
+	//"github.com/senorprogrammer/wtf/todoist"
+	//"github.com/senorprogrammer/wtf/weatherservices/weather"
 )
 
 func Display(moduleName string) {
@@ -21,18 +20,18 @@ func Display(moduleName string) {
 
 func helpFor(moduleName string) string {
 	switch moduleName {
-	case "git":
-		return git.HelpText
+	//case "git":
+	//	return git.HelpText
 	case "github":
 		return github.HelpText
-	case "textfile":
-		return textfile.HelpText
-	case "todo":
-		return todo.HelpText
-	case "todoist":
-		return todoist.HelpText
-	case "weather":
-		return weather.HelpText
+	//case "textfile":
+	//	return textfile.HelpText
+	//case "todo":
+	//	return todo.HelpText
+	//case "todoist":
+	//	return todoist.HelpText
+	//case "weather":
+	//	return weather.HelpText
 	default:
 		return fmt.Sprintf("\n  There is no help available for '%s'", moduleName)
 	}
