@@ -1,7 +1,6 @@
 package wtf
 
 import (
-	"github.com/gdamore/tcell"
 	"github.com/pkg/errors"
 	"github.com/rivo/tview"
 	"math"
@@ -11,26 +10,31 @@ import (
 	"strconv"
 )
 
+// Displayable represents an instance which is able to be
+// added to the application display
 type Displayable interface {
 	Viewer
 	Enabler
 	Positioner
 }
 
+// Display represents an application grid area,
+// which displays the list of registered Displayable items.
 type Display struct {
 	Grid   *tview.Grid
 	logger Logger
 }
 
+// Creates a new Display instance with initialized list of displayable items.
 func NewDisplay(widgets []Displayable, cnf AppConfig, logger Logger) *Display {
 	display := Display{
 		Grid:   tview.NewGrid(),
 		logger: logger,
 	}
 
-	display.Grid.SetBackgroundColor(tcell.Color(cnf.Colors.Background))
+	display.Grid.SetBackgroundColor(cnf.Colors.Background.ToTcell())
 	display.Grid.SetColumns(display.columns(cnf)...)
-	display.Grid.SetRows(cnf.Grid.Rows...)
+	display.Grid.SetRows(display.rows(cnf)...)
 	display.Grid.SetBorder(false)
 
 	for _, widget := range widgets {
@@ -42,8 +46,9 @@ func NewDisplay(widgets []Displayable, cnf AppConfig, logger Logger) *Display {
 
 /* -------------------- Unexported Functions -------------------- */
 
+// Adds widget to the current display
 func (display *Display) add(widget Displayable) {
-	if widget.Disabled() {
+	if false == widget.Enabled() {
 		return
 	}
 
@@ -59,32 +64,46 @@ func (display *Display) add(widget Displayable) {
 	)
 }
 
+// Returns columns map for grid, based on the provided configs.
+// If "numCols" is configured, then the columns map is calculated
+// automatically by dividing your terminal width into equal
+// desired amount of columns.
+// If "numCols" is not set, or if it's not possible to get the
+// terminal window size - then the value of "columns" custom map
+// is returned.
 func (display *Display) columns(cnf AppConfig) []int {
 	if cnf.Grid.NumCols == 0 {
-		return cnf.Grid.Columns
+		return cnf.Grid.ColumnsMap
 	}
 
 	size, err := getTerminalSize()
 	if err != nil {
 		display.logger.Error(err.Error())
-		return cnf.Grid.Columns
+		return cnf.Grid.ColumnsMap
 	}
 
-	var cols []int
-	colSize := float64(size.width) / float64(cnf.Grid.NumCols)
-	minColSize := int(math.Floor(colSize))
-	maxColSize := int(math.Ceil(colSize))
-	maxSizedCols := size.width - cnf.Grid.NumCols*minColSize
-	minSizedCols := cnf.Grid.NumCols - maxSizedCols
+	return splitSize(size.width, cnf.Grid.NumCols)
+}
 
-	for i := 0; i <= maxSizedCols; i++ {
-		cols = append(cols, maxColSize)
-	}
-	for i := 0; i <= minSizedCols; i++ {
-		cols = append(cols, minColSize)
+// Returns columns map for grid, based on the provided configs.
+// If "numCols" is configured, then the columns map is calculated
+// automatically by dividing your terminal width into equal
+// desired amount of columns.
+// If "numCols" is not set, or if it's not possible to get the
+// terminal window size - then the value of "columns" custom map
+// is returned.
+func (display *Display) rows(cnf AppConfig) []int {
+	if cnf.Grid.NumRows == 0 {
+		return cnf.Grid.RowsMap
 	}
 
-	return cols
+	size, err := getTerminalSize()
+	if err != nil {
+		display.logger.Error(err.Error())
+		return cnf.Grid.RowsMap
+	}
+
+	return splitSize(size.height, cnf.Grid.NumRows)
 }
 
 type size struct {
@@ -92,6 +111,8 @@ type size struct {
 	height int
 }
 
+// Returns window size of the current terminal session,
+// or error if it's not possible to get the size
 func getTerminalSize() (s size, err error) {
 	cmd := exec.Command("stty", "size")
 	cmd.Stdin = os.Stdin
@@ -117,4 +138,25 @@ func getTerminalSize() (s size, err error) {
 	}
 
 	return s, nil
+}
+
+// Splits a size (width/height) into array of equal sizes. If the "size" can
+// not be divided evenly by the "count", then it decrements some results so
+// that the sum of them is equal to the original size.
+func splitSize(size int, count int) []int {
+	var cols []int
+	colSize := float64(size) / float64(count)
+	minColSize := int(math.Floor(colSize))
+	maxColSize := int(math.Ceil(colSize))
+	maxSizedCols := size - count*minColSize
+	minSizedCols := count - maxSizedCols
+
+	for i := 0; i <= maxSizedCols; i++ {
+		cols = append(cols, maxColSize)
+	}
+	for i := 0; i <= minSizedCols; i++ {
+		cols = append(cols, minColSize)
+	}
+
+	return cols
 }

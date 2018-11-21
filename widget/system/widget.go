@@ -8,9 +8,9 @@ import (
 )
 
 type Config struct {
-	wtf.WidgetConfig `yaml:",inline"`
-	InputDateFormat  string `yaml:"inputDateFormat"`
-	OutputDateFormat string `yaml:"outputDateFormat"`
+	wtf.BaseWidgetConfig `yaml:",inline"`
+	InputDateFormat      string `yaml:"inputDateFormat"`
+	OutputDateFormat     string `yaml:"outputDateFormat"`
 }
 
 type Widget struct {
@@ -23,29 +23,36 @@ type Widget struct {
 	logger     wtf.Logger
 }
 
-func (widget *Widget) Name() string {
-	return "system"
+func CreateConstructor(date string, version string) wtf.WidgetConstructor {
+	return func(configure wtf.UnmarshalFunc, app *wtf.AppContext) (wtf.Widget, error) {
+		// Initialise
+		widget := &Widget{
+			Date:    date,
+			Version: version,
+		}
+
+		// Define default configs
+		widget.config = &Config{
+			InputDateFormat:  "2006-01-02T15:04:05-0700",
+			OutputDateFormat: "Jan _2, 15:04",
+		}
+		// Load configs from config file
+		if err := configure(widget.config); err != nil {
+			return nil, err
+		}
+
+		// Initialise the base widget implementation
+		widget.TextWidget = app.TextWidget("System", widget.config, false)
+
+		// Initialise data and services
+		widget.systemInfo = NewSystemInfo()
+		widget.logger = app.Logger
+
+		return widget, nil
+	}
 }
 
-func (widget *Widget) Init(configure wtf.UnmarshalFunc, context *wtf.AppContext) error {
-	context.Logger.Debug("System: init")
-
-	widget.config = &Config{
-		InputDateFormat:  "2006-01-02T15:04:05-0700",
-		OutputDateFormat: "Jan _2, 15:04",
-	}
-	if err := configure(widget.config); err != nil {
-		return err
-	}
-
-	widget.TextWidget = wtf.NewTextWidget(context.App, "System", widget.config.WidgetConfig, false)
-
-	widget.systemInfo = NewSystemInfo()
-
-	widget.logger = context.Logger
-
-	return nil
-}
+/* -------------------- Exported Functions -------------------- */
 
 func (widget *Widget) Refresh() {
 	widget.TextView.SetText(
@@ -62,6 +69,12 @@ func (widget *Widget) Refresh() {
 		),
 	)
 }
+
+func (widget *Widget) Close() error {
+	return nil
+}
+
+/* -------------------- Unexported Functions -------------------- */
 
 func (widget *Widget) reformatDate(date string) string {
 	str, err := time.Parse(widget.config.InputDateFormat, date)

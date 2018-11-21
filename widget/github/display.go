@@ -13,7 +13,7 @@ func (widget *Widget) display() {
 		return
 	}
 
-	widget.TextView.SetTitle(widget.ContextualTitle(fmt.Sprintf("%s - %s", widget.Title, widget.title(repo))))
+	widget.TextView.SetTitle(widget.ContextualTitle(fmt.Sprintf("%s - %s", widget.title, widget.title(repo))))
 
 	str := widget.formatter.SigilStr(len(widget.githubRepos), widget.idx, widget.TextView) + "\n"
 	str = str + " [red]Stats[white]\n"

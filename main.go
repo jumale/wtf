@@ -1,7 +1,6 @@
 package main
 
 import (
-	wtfApp "github.com/senorprogrammer/wtf/app"
 	"github.com/senorprogrammer/wtf/cfg"
 	wtfFlags "github.com/senorprogrammer/wtf/flags"
 	"github.com/senorprogrammer/wtf/widget/clocks"
@@ -11,10 +10,12 @@ import (
 	"github.com/senorprogrammer/wtf/widget/status"
 	"github.com/senorprogrammer/wtf/widget/system"
 	"github.com/senorprogrammer/wtf/widget/textfile"
+	"github.com/senorprogrammer/wtf/wtf"
 	"log"
+	"path"
 )
 
-// Config parses the config.yml file and makes available the settings within
+// config parses the config.yml file and makes available the settings within
 var (
 	commit  = "dev"
 	date    = "dev"
@@ -32,16 +33,20 @@ func main() {
 	flags.Parse()
 	flags.Display(version)
 
-	app, err := wtfApp.NewApp(configDir, "example.yml", true)
+	//configFile := flags.Config
+	configFile := path.Join(configDir, "example.yml")
+	watchConfigChanges := true
+
+	app, err := wtf.NewApp(configDir, configFile, watchConfigChanges)
 	checkErr(err)
 
-	app.AddWidget(&system.Widget{Date: date, Version: version})
-	app.AddWidget(&github.Widget{})
-	app.AddWidget(&logger.Widget{})
-	app.AddWidget(&clocks.Widget{})
-	app.AddWidget(&security.Widget{})
-	app.AddWidget(&status.Widget{})
-	app.AddWidget(&textfile.Widget{})
+	app.RegisterWidget("system", system.CreateConstructor(date, version))
+	app.RegisterWidget("github", github.New)
+	app.RegisterWidget("logger", logger.New)
+	app.RegisterWidget("clocks", clocks.New)
+	app.RegisterWidget("security", security.New)
+	app.RegisterWidget("status", status.New)
+	app.RegisterWidget("textfile", textfile.New)
 
 	err = app.Run()
 	checkErr(err)

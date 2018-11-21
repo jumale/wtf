@@ -14,9 +14,9 @@ import (
 )
 
 type Config struct {
-	wtf.WidgetConfig `yaml:",inline"`
-	NumLines         int    `yaml:"numLines"`
-	DateFormat       string `yaml:"dateFormat"`
+	wtf.BaseWidgetConfig `yaml:",inline"`
+	NumLines             int    `yaml:"numLines"`
+	DateFormat           string `yaml:"dateFormat"`
 }
 
 type Widget struct {
@@ -27,37 +27,45 @@ type Widget struct {
 	originDateFormat string
 }
 
-func (widget *Widget) Name() string {
-	return "logger"
-}
+func New(configure wtf.UnmarshalFunc, app *wtf.AppContext) (wtf.Widget, error) {
+	// Initialise
+	widget := &Widget{}
 
-func (widget *Widget) Init(configure wtf.UnmarshalFunc, context *wtf.AppContext) error {
+	// Define default configs
 	widget.config = &Config{
 		NumLines:   10,
 		DateFormat: "15:04:05",
 	}
+	// Load configs from config file
 	if err := configure(widget.config); err != nil {
-		return err
+		return nil, err
 	}
 
-	widget.logger = context.Logger
-	widget.originDateFormat = context.Config.Log.DateFormat
-	widget.TextWidget = wtf.NewTextWidget(context.App, "Logs", widget.config.WidgetConfig, false)
-	widget.filePath = path.Join(context.ConfigDir, context.Config.Log.File)
+	// Initialise the base widget implementation
+	widget.TextWidget = app.TextWidget("Logs", widget.config, false)
 
-	return nil
+	// Initialise data and services
+	widget.originDateFormat = app.Config.Log.DateFormat
+	widget.filePath = path.Join(app.AppDir, app.Config.Log.File)
+	widget.logger = app.Logger
+
+	return widget, nil
 }
 
 /* -------------------- Exported Functions -------------------- */
 
 func (widget *Widget) Refresh() {
-	widget.TextView.SetTitle(widget.Title)
+	widget.TextView.SetTitle(widget.config.Title())
 
 	logLines, err := widget.tailFile()
 	if err != nil {
 		log.Println(err)
 	}
 	widget.TextView.SetText(widget.contentFrom(logLines))
+}
+
+func (widget *Widget) Close() error {
+	return nil
 }
 
 /* -------------------- Unexported Functions -------------------- */
@@ -110,7 +118,7 @@ func (widget *Widget) levelColor(level string) string {
 		return "green"
 	case "warn", "warning":
 		return "orange"
-	case "error", "fatal":
+	case "error":
 		return "red"
 	}
 	return "white"

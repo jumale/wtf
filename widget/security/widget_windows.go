@@ -10,7 +10,7 @@ import (
 )
 
 type Config struct {
-	wtf.WidgetConfig `yaml:",inline"`
+	wtf.BaseWidgetConfig `yaml:",inline"`
 }
 
 type Widget struct {
@@ -19,21 +19,22 @@ type Widget struct {
 	logger wtf.Logger
 }
 
-func (widget *Widget) Name() string {
-	return "security"
-}
+func New(configure wtf.UnmarshalFunc, app *wtf.AppContext) (wtf.Widget, error) {
+	// Initialise
+	widget := &Widget{}
 
-func (widget *Widget) Init(configure wtf.UnmarshalFunc, context *wtf.AppContext) error {
-	context.Logger.Debug("Security: init")
-
+	// Define default configs
 	widget.config = &Config{}
+	// Load configs from config file
 	if err := configure(widget.config); err != nil {
 		return err
 	}
 
-	widget.TextWidget = wtf.NewTextWidget(context.App, "Security", widget.config.WidgetConfig, false)
+	// Initialise the base widget implementation
+	widget.TextWidget = app.TextWidget("Security", widget.config, false)
 
-	widget.logger = context.Logger
+	// Initialise data and services
+	widget.logger = app.Logger
 
 	return nil
 }
@@ -49,6 +50,10 @@ func (widget *Widget) Refresh() {
 	data.Fetch()
 
 	widget.View.SetText(widget.contentFrom(data))
+}
+
+func (widget *Widget) Close() error {
+	return nil
 }
 
 /* -------------------- Unexported Functions -------------------- */

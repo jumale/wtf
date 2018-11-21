@@ -20,19 +20,18 @@ const HelpText = `
 `
 
 type Config struct {
-	wtf.WidgetConfig `yaml:",inline"`
-	Username         string                 `yaml:"username"`
-	ApiKey           string                 `yaml:"apiKey"`
-	BaseURL          string                 `yaml:"baseURL"`
-	UploadURL        string                 `yaml:"uploadURL"`
-	ShowStatus       bool                   `yaml:"enableStatus"`
-	Repositories     map[string]interface{} `yaml:"repositories"`
+	wtf.BaseWidgetConfig `yaml:",inline"`
+	Username             string                 `yaml:"username"`
+	ApiKey               string                 `yaml:"apiKey"`
+	BaseURL              string                 `yaml:"baseURL"`
+	UploadURL            string                 `yaml:"uploadURL"`
+	ShowStatus           bool                   `yaml:"enableStatus"`
+	Repositories         map[string]interface{} `yaml:"repositories"`
 }
 
 type Widget struct {
-	*wtf.HelpfulWidget
+	*wtf.HelpfulWidgetTrait
 	*wtf.TextWidget
-
 	githubRepos []*Repo
 	idx         int
 	config      *Config
@@ -41,32 +40,32 @@ type Widget struct {
 	logger      wtf.Logger
 }
 
-func (widget *Widget) Name() string {
-	return "github"
-}
+func New(configure wtf.UnmarshalFunc, app *wtf.AppContext) (wtf.Widget, error) {
+	// Initialise
+	widget := &Widget{}
 
-func (widget *Widget) Init(configure wtf.UnmarshalFunc, context *wtf.AppContext) error {
-	context.Logger.Debug("Github: init")
-
+	// Define default configs
 	widget.config = &Config{
 		ShowStatus: false,
 	}
+	// Load configs from config file
 	if err := configure(widget.config); err != nil {
-		return err
+		return nil, err
 	}
 
-	widget.TextWidget = wtf.NewTextWidget(context.App, "GitHub", widget.config.WidgetConfig, true)
-	widget.HelpfulWidget = wtf.NewHelpfulWidget(context.App, context.Pages, widget.TextView, HelpText)
+	// Initialise the base widget implementation
+	widget.TextWidget = app.TextWidget("GitHub", widget.config, true)
+	widget.HelpfulWidgetTrait = app.HelpfulWidgetTrait(widget.TextView, HelpText)
 
+	// Initialise data and services
 	widget.githubRepos = widget.buildRepoCollection(widget.config.Repositories)
-
-	widget.fs = &context.FS
-	widget.formatter = &context.Formatter
-	widget.logger = context.Logger
+	widget.fs = &app.FS
+	widget.formatter = &app.Formatter
+	widget.logger = app.Logger
 
 	widget.TextView.SetInputCapture(widget.keyboardIntercept)
 
-	return nil
+	return widget, nil
 }
 
 /* -------------------- Exported Functions -------------------- */
@@ -78,6 +77,10 @@ func (widget *Widget) Refresh() {
 	}
 
 	widget.display()
+}
+
+func (widget *Widget) Close() error {
+	return nil
 }
 
 func (widget *Widget) Next() {

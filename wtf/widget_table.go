@@ -1,114 +1,83 @@
 package wtf
 
 import (
+	"fmt"
 	"github.com/rivo/tview"
 )
 
+// TableWidget provides basic widget implementation based on tview.Table.
+// Use it as a base for any kind of widgets which need to display tables.
+// The widget provides RenderTable methods which you can use to send table
+// data to the app view.
 type TableWidget struct {
-	enabled   bool
-	focusable bool
-	focusChar string
-
-	Name       string
-	RefreshInt int
-	TableView  *tview.Table
-
-	Position
+	*BaseWidget
+	// Need for consumers of this struct to get the TableView-typed view
+	TableView *tview.Table
 }
 
-//func NewTableWidget(app *tview.Application, name string, configKey string, focusable bool) *TableWidget {
-//	widget := &TableWidget{
-//		enabled:   AppConfig.UBool(fmt.Sprintf("wtf.mods.%s.enabled", configKey), false),
-//		focusable: focusable,
-//
-//		Name:       AppConfig.UString(fmt.Sprintf("wtf.mods.%s.title", configKey), name),
-//		RefreshInt: AppConfig.UInt(fmt.Sprintf("wtf.mods.%s.refreshInterval", configKey)),
-//	}
-//
-//	widget.Position = NewPosition(
-//		AppConfig.UInt(fmt.Sprintf("wtf.mods.%s.position.top", configKey)),
-//		AppConfig.UInt(fmt.Sprintf("wtf.mods.%s.position.left", configKey)),
-//		AppConfig.UInt(fmt.Sprintf("wtf.mods.%s.position.width", configKey)),
-//		AppConfig.UInt(fmt.Sprintf("wtf.mods.%s.position.height", configKey)),
-//	)
-//
-//	widget.addView(app, configKey)
-//
-//	return widget
-//}
-//
-///* -------------------- Exported Functions -------------------- */
-//
-//func (widget *TableWidget) BorderColor() string {
-//	if widget.Focusable() {
-//		return AppConfig.UString("wtf.colors.border.focusable", "red")
-//	}
-//
-//	return AppConfig.UString("wtf.colors.border.normal", "gray")
-//}
-//
-//func (widget *TableWidget) ContextualTitle(defaultStr string) string {
-//	if widget.FocusChar() == "" {
-//		return fmt.Sprintf(" %s ", defaultStr)
-//	}
-//
-//	return fmt.Sprintf(" %s [darkgray::u]%s[::-][green] ", defaultStr, widget.FocusChar())
-//}
-//
-//func (widget *TableWidget) Disable() {
-//	widget.enabled = false
-//}
-//
-//func (widget *TableWidget) Disabled() bool {
-//	return !widget.Enabled()
-//}
-//
-//func (widget *TableWidget) Enabled() bool {
-//	return widget.enabled
-//}
-//
-//func (widget *TableWidget) Focusable() bool {
-//	return widget.enabled && widget.focusable
-//}
-//
-//func (widget *TableWidget) FocusChar() string {
-//	return widget.focusChar
-//}
-//
-//func (widget *TableWidget) RefreshInterval() int {
-//	return widget.RefreshInt
-//}
-//
-//func (widget *TableWidget) SetFocusChar(char string) {
-//	widget.focusChar = char
-//}
-//
-//func (widget *TableWidget) View() View {
-//	return widget.TableView
-//}
-//
-///* -------------------- Unexported Functions -------------------- */
-//
-//
-//func (widget *TableWidget) addView(app *tview.Application, configKey string) {
-//	view := tview.NewTable()
-//
-//	view.SetBackgroundColor(colorFor(
-//		AppConfig.UString(fmt.Sprintf("wtf.mods.%s.colors.background", configKey),
-//			AppConfig.UString("wtf.colors.background", "black"),
-//		),
-//	))
-//
-//	view.SetTitleColor(colorFor(
-//		AppConfig.UString(
-//			fmt.Sprintf("wtf.mods.%s.colors.title", configKey),
-//			AppConfig.UString("wtf.colors.title", "white"),
-//		),
-//	))
-//
-//	view.SetBorder(true)
-//	view.SetBorderColor(colorFor(widget.BorderColor()))
-//	view.SetTitle(widget.ContextualTitle(widget.Name))
-//
-//	widget.TableView = view
-//}
+func newTableWidget(title string, app *tview.Application, config WidgetConfig, focusable bool) *TableWidget {
+	view := tview.NewTable()
+	return &TableWidget{
+		BaseWidget: newBaseWidget(title, view, app, config, focusable),
+		TableView:  view,
+	}
+}
+
+// RenderTable iterates over the table data and sends it to the app view.
+func (widget *TableWidget) RenderTable(t Table) {
+	for row, r := range t {
+		widget.renderRow(row, r)
+	}
+}
+
+func (widget *TableWidget) renderRow(row int, r Row) {
+	for col, cell := range r {
+		widget.renderCell(row, col, cell)
+	}
+}
+
+func (widget *TableWidget) renderCell(row int, col int, c Cell) {
+	if c != nil {
+		cell := tview.NewTableCell(c.String())
+		cell.SetAlign(c.Align())
+		cell.SetExpansion(1)
+		widget.TableView.SetCell(row, col, cell)
+	}
+}
+
+// Table is a matrix of abstract Cell interfaces.
+type Table []Row
+type Row []Cell
+
+// You can implement your custom cell types which know how they should be
+// formatted to a cell string value.
+type Cell interface {
+	// String returns formatted data of the cell
+	String() string
+
+	// Raw returns raw data of the cell
+	Raw() string
+
+	// Align returns text align rule of the cell.
+	// Possible values:
+	//     tview.AlignLeft
+	//     tview.AlignCenter
+	//     tview.AlignRight
+	Align() int
+}
+
+// Implementation of Cell interface, which makes text bold. Can be used for
+// displaying headers.
+type Header string
+
+func (h Header) Raw() string {
+	return string(h)
+}
+
+func (h Header) String() string {
+	return fmt.Sprintf("[::b]%s[-:-:-]", string(h))
+}
+
+func (h Header) Align() int {
+	return tview.AlignCenter
+}

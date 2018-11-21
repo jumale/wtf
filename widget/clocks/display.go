@@ -2,7 +2,6 @@ package clocks
 
 import (
 	"fmt"
-	"github.com/senorprogrammer/wtf/wtf"
 )
 
 func (widget *Widget) display(clocks []Clock) {
@@ -15,7 +14,7 @@ func (widget *Widget) display(clocks []Clock) {
 	for idx, clock := range clocks {
 		str = str + fmt.Sprintf(
 			" [%s]%-12s %-10s %7s[white]\n",
-			wtf.TcellToTviewColor(widget.formatter.RowColor(idx)),
+			widget.formatter.RowColor(idx),
 			clock.Label,
 			clock.Time(),
 			clock.Date(),

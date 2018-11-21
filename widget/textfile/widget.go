@@ -31,55 +31,60 @@ const HelpText = `
 `
 
 type Config struct {
-	wtf.WidgetConfig `yaml:",inline"`
-	FilePath         string   `yaml:"filePath"`
-	FilePaths        []string `yaml:"filePaths"`
-	Format           bool     `yaml:"format"`
-	FormatStyle      string   `yaml:"formatStyle"`
+	wtf.BaseWidgetConfig `yaml:",inline"`
+	FilePath             string   `yaml:"filePath"`
+	FilePaths            []string `yaml:"filePaths"`
+	Format               bool     `yaml:"format"`
+	FormatStyle          string   `yaml:"formatStyle"`
 }
 
 type Widget struct {
-	*wtf.HelpfulWidget
-	*wtf.MultiSourceWidget
+	*wtf.HelpfulWidgetTrait
+	*wtf.MultiSourceWidgetTrait
 	*wtf.TextWidget
 	config    *Config
 	formatter *wtf.Formatter
 	fs        *wtf.FileSystem
 	logger    wtf.Logger
+	watcher   *watcher.Watcher
 }
 
-func (widget *Widget) Name() string {
-	return "textfile"
-}
+func New(configure wtf.UnmarshalFunc, app *wtf.AppContext) (wtf.Widget, error) {
+	// Initialise
+	widget := &Widget{}
 
-func (widget *Widget) Init(configure wtf.UnmarshalFunc, context *wtf.AppContext) error {
-	context.Logger.Debug("Textfile: init")
-
+	// Define default configs
 	widget.config = &Config{
 		FormatStyle: "vim",
 	}
+	// Load configs from config file
 	if err := configure(widget.config); err != nil {
-		return err
+		return nil, err
 	}
 	// Don't use a timer for this widget, watch for filesystem changes instead
-	widget.config.WidgetConfig.RefreshInterval = 0
+	widget.config.BaseWidgetConfig.ParamRefreshInterval = 0
 
-	widget.TextWidget = wtf.NewTextWidget(context.App, "Textfile", widget.config.WidgetConfig, true)
-	widget.HelpfulWidget = wtf.NewHelpfulWidget(context.App, context.Pages, widget.TextView, HelpText)
-	widget.MultiSourceWidget = wtf.NewMultiSourceWidget(widget.config.FilePath, widget.config.FilePaths)
+	// Initialise the base widget implementation
+	widget.TextWidget = app.TextWidget("Textfile", widget.config.BaseWidgetConfig, true)
+	widget.HelpfulWidgetTrait = app.HelpfulWidgetTrait(widget.View(), HelpText)
+	widget.MultiSourceWidgetTrait = app.MultiSourceWidgetTrait(widget.config.FilePath, widget.config.FilePaths)
 
-	widget.formatter = &context.Formatter
-	widget.fs = &context.FS
-	widget.logger = context.Logger
+	// Initialise data and services
+	widget.formatter = &app.Formatter
+	widget.fs = &app.FS
+	widget.logger = app.Logger
+	widget.watcher = watcher.New()
 
-	widget.SetDisplayFunction(widget.display)
+	// Adjust view settings
 	widget.TextView.SetWrap(true)
 	widget.TextView.SetWordWrap(true)
 	widget.TextView.SetInputCapture(widget.keyboardIntercept)
 
+	// Enable file watcher
+	widget.SetDisplayFunction(widget.display)
 	go widget.watchForFileChanges()
 
-	return nil
+	return widget, nil
 }
 
 /* -------------------- Exported Functions -------------------- */
@@ -88,6 +93,12 @@ func (widget *Widget) Init(configure wtf.UnmarshalFunc, context *wtf.AppContext)
 // text files that first time. After that, the watcher takes over
 func (widget *Widget) Refresh() {
 	widget.display()
+}
+
+func (widget *Widget) Close() error {
+	widget.watcher.Close()
+
+	return nil
 }
 
 /* -------------------- Unexported Functions -------------------- */
@@ -104,10 +115,10 @@ func (widget *Widget) display() {
 		text = text + widget.plainText()
 	}
 
-	//widget.TextView.Lock()
-	widget.TextView.SetTitle(title) // <- Writes to TextView's title
-	widget.TextView.SetText(text)   // <- Writes to TextView's text
-	//widget.TextView.Unlock()
+	//widget.TableView.Lock()
+	widget.TextView.SetTitle(title) // <- Writes to TableView's title
+	widget.TextView.SetText(text)   // <- Writes to TableView's text
+	//widget.TableView.Unlock()
 }
 
 func (widget *Widget) fileName() string {
@@ -151,8 +162,6 @@ func (widget *Widget) formattedText() string {
 func (widget *Widget) plainText() string {
 	filePath, _ := widget.fs.ExpandHomeDir(widget.CurrentSource())
 
-	fmt.Println(filePath)
-
 	text, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		return err.Error()
@@ -189,34 +198,33 @@ func (widget *Widget) keyboardIntercept(event *tcell.EventKey) *tcell.EventKey {
 }
 
 func (widget *Widget) watchForFileChanges() {
-	watch := watcher.New()
-	watch.FilterOps(watcher.Write)
+	widget.watcher.FilterOps(watcher.Write)
 
 	go func() {
 		for {
 			select {
-			case <-watch.Event:
+			case <-widget.watcher.Event:
 				widget.display()
-			case err := <-watch.Error:
+			case err := <-widget.watcher.Error:
 				log.Fatalln(err)
-			case <-watch.Closed:
+			case <-widget.watcher.Closed:
 				return
 			}
 		}
 	}()
 
-	// Watch each textfile for changes
+	// Watch each text-file for changes
 	for _, source := range widget.Sources {
 		fullPath, err := widget.fs.ExpandHomeDir(source)
 		if err == nil {
-			if err := watch.Add(fullPath); err != nil {
+			if err := widget.watcher.Add(fullPath); err != nil {
 				log.Fatalln(err)
 			}
 		}
 	}
 
 	// Start the watching process - it'll check for changes every 100ms.
-	if err := watch.Start(time.Millisecond * 100); err != nil {
+	if err := widget.watcher.Start(time.Millisecond * 100); err != nil {
 		log.Fatalln(err)
 	}
 }

@@ -1,6 +1,6 @@
 package wtf
 
-type MultiSourceWidget struct {
+type MultiSourceWidgetTrait struct {
 	module   string
 	singular string
 	plural   string
@@ -10,8 +10,8 @@ type MultiSourceWidget struct {
 	Sources         []string
 }
 
-func NewMultiSourceWidget(singular string, plural []string) *MultiSourceWidget {
-	widget := MultiSourceWidget{}
+func newMultiSourceSourceWidgetTrait(singular string, plural []string) *MultiSourceWidgetTrait {
+	widget := MultiSourceWidgetTrait{}
 	widget.Sources = append(widget.Sources, singular)
 	widget.Sources = append(widget.Sources, plural...)
 
@@ -20,7 +20,7 @@ func NewMultiSourceWidget(singular string, plural []string) *MultiSourceWidget {
 
 /* -------------------- Exported Functions -------------------- */
 
-func (widget *MultiSourceWidget) CurrentSource() string {
+func (widget *MultiSourceWidgetTrait) CurrentSource() string {
 	if widget.Idx >= len(widget.Sources) {
 		return ""
 	}
@@ -28,7 +28,7 @@ func (widget *MultiSourceWidget) CurrentSource() string {
 	return widget.Sources[widget.Idx]
 }
 
-func (widget *MultiSourceWidget) NextSource() {
+func (widget *MultiSourceWidgetTrait) NextSource() {
 	widget.Idx = widget.Idx + 1
 	if widget.Idx == len(widget.Sources) {
 		widget.Idx = 0
@@ -39,7 +39,7 @@ func (widget *MultiSourceWidget) NextSource() {
 	}
 }
 
-func (widget *MultiSourceWidget) PrevSource() {
+func (widget *MultiSourceWidgetTrait) PrevSource() {
 	widget.Idx = widget.Idx - 1
 	if widget.Idx < 0 {
 		widget.Idx = len(widget.Sources) - 1
@@ -50,6 +50,6 @@ func (widget *MultiSourceWidget) PrevSource() {
 	}
 }
 
-func (widget *MultiSourceWidget) SetDisplayFunction(displayFunc func()) {
+func (widget *MultiSourceWidgetTrait) SetDisplayFunction(displayFunc func()) {
 	widget.DisplayFunction = displayFunc
 }

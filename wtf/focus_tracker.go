@@ -13,32 +13,45 @@ const (
 	neverFocused
 )
 
+// Represents a widget item which is able to focus itself, tell if it's
+// focusable, and provides getter/setter for a binded hot-key which suppose
+// to focuse the widget on press.
 type Focuser interface {
+	//
+	Focus()
 	Focusable() bool
-	FocusChar() string
-	SetFocusChar(string)
+	FocusKey() string
+	SetFocusKey(string)
 }
 
-type Focusable interface {
+// Represents an item, which is trackable by the FocusTracker.
+type FocusTrackedItem interface {
 	Focuser
 	Viewer
 }
 
-// FocusTracker is used by the app to track which onscreen item currently has focus,
+// FocusTracker is used by the appView to track which onscreen item currently has focus,
 // and to move focus between screen items.
 type FocusTracker struct {
 	app    *tview.Application
 	idx    int
 	config *AppConfig
-	items  []Focusable
+	items  []FocusTrackedItem
+	logger Logger
 }
 
-func NewFocusTracker(app *tview.Application, cfg *AppConfig, items []Focusable) *FocusTracker {
+func NewFocusTracker(
+	app *tview.Application,
+	cfg *AppConfig,
+	items []FocusTrackedItem,
+	logger Logger,
+) *FocusTracker {
 	return &FocusTracker{
 		idx:    -1,
 		app:    app,
 		config: cfg,
 		items:  items,
+		logger: logger,
 	}
 }
 
@@ -52,19 +65,20 @@ func (tracker *FocusTracker) AssignHotKeys() {
 	}
 
 	i := 1
-
-	for _, focusable := range tracker.focusables() {
+	for _, focusable := range tracker.focusableItems() {
 		// Don't have nav characters > "9"
 		if i >= 10 {
 			break
 		}
 
-		focusable.SetFocusChar(string('0' + i))
+		tracker.logger.Debugf("FocusTracker: set focus key %s", string('0'+i))
+		focusable.SetFocusKey(string('0' + i))
 		i++
 	}
 }
 
-func (tracker *FocusTracker) FocusOn(char string) bool {
+// FocusOn sets the focus on the specified
+func (tracker *FocusTracker) FocusOn(keyChar string) bool {
 	if !tracker.config.Navigation.Shortcuts {
 		return false
 	}
@@ -75,8 +89,8 @@ func (tracker *FocusTracker) FocusOn(char string) bool {
 
 	hasFocusable := false
 
-	for idx, focusable := range tracker.focusables() {
-		if focusable.FocusChar() == char {
+	for idx, focusable := range tracker.focusableItems() {
+		if focusable.FocusKey() == keyChar {
 			tracker.blur(tracker.idx)
 			tracker.idx = idx
 			tracker.focus(tracker.idx)
@@ -143,7 +157,7 @@ func (tracker *FocusTracker) decrement() {
 	tracker.idx = tracker.idx - 1
 
 	if tracker.idx < 0 {
-		tracker.idx = len(tracker.focusables()) - 1
+		tracker.idx = len(tracker.focusableItems()) - 1
 	}
 }
 
@@ -154,14 +168,14 @@ func (tracker *FocusTracker) focus(idx int) {
 	}
 
 	view := item.View()
-	view.SetBorderColor(tcell.Color(tracker.config.Colors.Border.Focused))
+	view.SetBorderColor(tracker.config.Colors.Border.Focused.ToTcell())
 
-	tracker.app.SetFocus(view)
+	item.Focus()
 	tracker.app.Draw()
 }
 
-func (tracker *FocusTracker) focusables() []Focusable {
-	var focusable []Focusable
+func (tracker *FocusTracker) focusableItems() []FocusTrackedItem {
+	var focusable []FocusTrackedItem
 
 	for _, item := range tracker.items {
 		if item.Focusable() {
@@ -172,12 +186,12 @@ func (tracker *FocusTracker) focusables() []Focusable {
 	return focusable
 }
 
-func (tracker *FocusTracker) focusableAt(idx int) Focusable {
-	if idx < 0 || idx >= len(tracker.focusables()) {
+func (tracker *FocusTracker) focusableAt(idx int) FocusTrackedItem {
+	if idx < 0 || idx >= len(tracker.focusableItems()) {
 		return nil
 	}
 
-	return tracker.focusables()[idx]
+	return tracker.focusableItems()[idx]
 }
 
 func (tracker *FocusTracker) focusState() FocusState {
@@ -197,7 +211,7 @@ func (tracker *FocusTracker) focusState() FocusState {
 func (tracker *FocusTracker) increment() {
 	tracker.idx = tracker.idx + 1
 
-	if tracker.idx == len(tracker.focusables()) {
+	if tracker.idx == len(tracker.focusableItems()) {
 		tracker.idx = 0
 	}
 }
@@ -207,5 +221,5 @@ func focusableItemBorderColor(item Focuser, cnf ColorsBorderConfig) tcell.Color 
 	if item.Focusable() {
 		borderColor = cnf.Focusable
 	}
-	return tcell.Color(borderColor)
+	return borderColor.ToTcell()
 }

@@ -5,38 +5,43 @@ import (
 )
 
 type Config struct {
-	wtf.WidgetConfig `yaml:",inline"`
+	wtf.BaseWidgetConfig `yaml:",inline"`
 }
 
 type Widget struct {
 	*wtf.TextWidget
-
 	CurrentIcon int
 	config      *Config
 }
 
-func (widget *Widget) Name() string {
-	return "status"
-}
+func New(configure wtf.UnmarshalFunc, app *wtf.AppContext) (wtf.Widget, error) {
+	// Initialise
+	widget := &Widget{}
 
-func (widget *Widget) Init(configure wtf.UnmarshalFunc, context *wtf.AppContext) error {
-	context.Logger.Debug("Status: init")
-
+	// Define default configs
 	widget.config = &Config{}
+	// Load configs from config file
 	if err := configure(widget.config); err != nil {
-		return err
+		return nil, err
 	}
 
-	widget.TextWidget = wtf.NewTextWidget(context.App, "Status", widget.config.WidgetConfig, false)
+	// Initialise the base widget implementation
+	widget.TextWidget = app.TextWidget("Status", widget.config, false)
+
+	// Initialise data and services
 	widget.CurrentIcon = 0
 
-	return nil
+	return widget, nil
 }
 
 /* -------------------- Exported Functions -------------------- */
 
 func (widget *Widget) Refresh() {
 	widget.TextView.SetText(widget.animation())
+}
+
+func (widget *Widget) Close() error {
+	return nil
 }
 
 /* -------------------- Unexported Functions -------------------- */

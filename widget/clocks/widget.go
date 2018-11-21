@@ -8,9 +8,9 @@ import (
 )
 
 type Config struct {
-	wtf.WidgetConfig `yaml:",inline"`
-	Sort             SortType          `yaml:"sort"`
-	Locations        map[string]string `yaml:"locations"`
+	wtf.BaseWidgetConfig `yaml:",inline"`
+	Sort                 SortType          `yaml:"sort"`
+	Locations            map[string]string `yaml:"locations"`
 }
 
 type Widget struct {
@@ -20,33 +20,37 @@ type Widget struct {
 	formatter *wtf.Formatter
 }
 
-func (widget *Widget) Name() string {
-	return "clocks"
-}
+func New(configure wtf.UnmarshalFunc, app *wtf.AppContext) (wtf.Widget, error) {
+	// Initialise
+	widget := &Widget{}
 
-func (widget *Widget) Init(configure wtf.UnmarshalFunc, context *wtf.AppContext) error {
-	context.Logger.Debug("Clocks: init")
-
+	// Define default configs
 	widget.config = &Config{
 		Sort: SortAlphabetical,
 	}
+	// Load configs from config file
 	if err := configure(widget.config); err != nil {
-		return err
+		return nil, err
 	}
 
-	widget.TextWidget = wtf.NewTextWidget(context.App, "World Clocks", widget.config.WidgetConfig, false)
+	// Initialise the base widget implementation
+	widget.TextWidget = app.TextWidget("World Clocks", widget.config, false)
 
+	// Initialise data and services
 	widget.clockColl = widget.buildClockCollection(widget.config.Locations)
+	widget.formatter = &app.Formatter
 
-	widget.formatter = &context.Formatter
-
-	return nil
+	return widget, nil
 }
 
 /* -------------------- Exported Functions -------------------- */
 
 func (widget *Widget) Refresh() {
 	widget.display(widget.clockColl.Sorted())
+}
+
+func (widget *Widget) Close() error {
+	return nil
 }
 
 /* -------------------- Unexported Functions -------------------- */

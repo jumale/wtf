@@ -15,9 +15,9 @@ type GraphEntry interface {
 }
 
 type BarGraphConfig struct {
-	*WidgetConfig `yaml:",inline"`
-	GraphIcon     string `yaml:"graphIcon"`
-	GraphStars    uint8  `yaml:"graphStars"`
+	*BaseWidgetConfig `yaml:",inline"`
+	GraphIcon         string `yaml:"graphIcon"`
+	GraphStars        uint8  `yaml:"graphStars"`
 }
 
 //BarGraph lets make graphs
@@ -26,7 +26,7 @@ type BarGraphWidget struct {
 	Config *BarGraphConfig
 }
 
-func NewBarGraphWidget(app *tview.Application, name string, config BarGraphConfig, focusable bool) BarGraphWidget {
+func newBarGraphWidget(app *tview.Application, name string, config BarGraphConfig, focusable bool) BarGraphWidget {
 	graph := BarGraphWidget{}
 
 	if config.GraphIcon == "" {
@@ -37,7 +37,7 @@ func NewBarGraphWidget(app *tview.Application, name string, config BarGraphConfi
 	}
 
 	graph.Config = &config
-	graph.TextWidget = NewTextWidget(app, name, *config.WidgetConfig, focusable)
+	graph.TextWidget = newTextWidget(name, app, config, focusable)
 
 	return graph
 }

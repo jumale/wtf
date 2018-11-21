@@ -1,44 +1,28 @@
 package wtf
 
 import (
-	"github.com/gdamore/tcell"
 	"github.com/rivo/tview"
 )
 
+// TextWidget provides basic widget implementation based on tview.TextView.
+// Use it as a base for any kind of widgets which need to display some text.
 type TextWidget struct {
 	*BaseWidget
+	// Need for consumers of this struct to get the TableView-typed view
 	TextView *tview.TextView
 }
 
-func NewTextWidget(app *tview.Application, name string, config WidgetConfig, focusable bool) *TextWidget {
-	widget := &TextWidget{
-		BaseWidget: NewBaseWidget(name, config, focusable),
-	}
-
+func newTextWidget(title string, app *tview.Application, config WidgetConfig, focusable bool) *TextWidget {
 	view := tview.NewTextView()
-	view.SetTitle(widget.ContextualTitle(widget.Title))
-
-	view.SetBorderColor(widget.BorderColor())
-	view.SetTitleColor(tcell.Color(widget.Config.Colors.Title))
-	view.SetTextColor(tcell.Color(widget.Config.Colors.Foreground))
-	view.SetBackgroundColor(tcell.Color(widget.Config.Colors.Background))
-
-	view.SetBorder(true)
+	view.SetTextColor(config.Colors().Foreground.ToTcell())
 	view.SetDynamicColors(true)
 	view.SetWrap(false)
-
-	// @todo: check if needed
-	view.SetChangedFunc(func() {
+	view.SetChangedFunc(func() { // @todo: check if needed
 		app.Draw()
 	})
 
-	widget.TextView = view
-
-	return widget
-}
-
-/* -------------------- Exported Functions -------------------- */
-
-func (widget *TextWidget) View() View {
-	return widget.TextView
+	return &TextWidget{
+		BaseWidget: newBaseWidget(title, view, app, config, focusable),
+		TextView:   view,
+	}
 }
