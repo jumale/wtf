@@ -52,7 +52,7 @@ func GetDefaultAppConfig() AppConfig {
 // ------------------------------ ROOT CONFIGS ---------------------------- //
 
 type Config struct {
-	App           AppConfig             `yaml:"appView"`
+	App           AppConfig             `yaml:"app"`
 	WidgetsConfig []interimWidgetConfig `yaml:"widgets"`
 }
 
